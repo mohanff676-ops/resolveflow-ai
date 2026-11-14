@@ -1,10 +1,13 @@
 import app from './app.js';
-import { PORT, NODE_ENV } from './config/env.js';
+import { NODE_ENV } from './config/env.js';
 import { logger } from './utils/logger.js';
 
-const server = app.listen(PORT, () => {
+const PORT = process.env.PORT || 3001;
+const HOST = '0.0.0.0';
+
+const server = app.listen(PORT, HOST, () => {
   logger.info(`ResolveFlow AI Backend running on port ${PORT} [${NODE_ENV}]`);
-  logger.info(`Health check available at http://localhost:${PORT}/api/health`);
+  logger.info(`Health check available at http://${HOST}:${PORT}/api/health`);
 });
 
 // Graceful shutdown handling
