@@ -1,0 +1,25 @@
+{
+  "name": "resolveflow-ai",
+  "version": "1.0.0",
+  "description": "ResolveFlow AI - Autonomous business operations platform powered by Agentic AI",
+  "private": true,
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "server": "node backend/src/server.js",
+    "client": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "seed": "npm --prefix backend run seed",
+    "test": "npm --prefix backend test"
+  },
+  "keywords": [
+    "agentic-ai",
+    "gemini",
+    "multi-agent",
+    "autonomous-workflows",
+    "supabase",
+    "react"
+  ],
+  "author": "ResolveFlow AI Team",
+  "license": "MIT"
+}
