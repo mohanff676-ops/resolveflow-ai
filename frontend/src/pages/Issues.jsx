@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle,
+  Ticket,
   Search,
   Filter,
   Plus,
@@ -10,9 +10,9 @@ import {
   Clock,
   Eye,
   RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { issueService } from '../services/issue.service.js';
-import Card from '../components/common/Card.jsx';
 import Badge from '../components/common/Badge.jsx';
 import Button from '../components/common/Button.jsx';
 import Spinner from '../components/common/Spinner.jsx';
@@ -28,14 +28,6 @@ export const Issues = () => {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newIssue, setNewIssue] = useState({
-    title: '',
-    description: '',
-    type: 'general_inquiry',
-    priority: 'medium',
-  });
-  const [submitting, setSubmitting] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   const fetchIssues = async () => {
@@ -50,7 +42,7 @@ export const Issues = () => {
         setIssues(res.data);
       }
     } catch (err) {
-      console.error('Failed to load issues:', err);
+      console.error('Failed to load tickets:', err);
     } finally {
       setLoading(false);
     }
@@ -74,7 +66,7 @@ export const Issues = () => {
         setSelectedIssue(res.data);
       }
     } catch (err) {
-      console.error('Failed to load issue details:', err);
+      console.error('Failed to load ticket details:', err);
     }
   };
 
@@ -97,36 +89,18 @@ export const Issues = () => {
     }
   };
 
-  const handleCreateIssue = async (e) => {
-    e.preventDefault();
-    if (!newIssue.title || !newIssue.description) return;
-    setSubmitting(true);
-    try {
-      const res = await issueService.createIssue(newIssue);
-      if (res.success) {
-        setIsCreateModalOpen(false);
-        setNewIssue({ title: '', description: '', type: 'general_inquiry', priority: 'medium' });
-        fetchIssues();
-      }
-    } catch (err) {
-      console.error('Failed to create issue:', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <AlertCircle className="w-6 h-6 text-indigo-600" />
-              Support Issues
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+              <Ticket className="w-6 h-6 text-indigo-600" />
+              All Tickets
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Track customer complaints, delivery discrepancies, and support tickets.
+              View and manage all customer support tickets.
             </p>
           </div>
 
@@ -143,9 +117,9 @@ export const Issues = () => {
               variant="primary"
               size="md"
               icon={Plus}
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => navigate('/create-ticket')}
             >
-              + Create Support Ticket
+              Create Ticket
             </Button>
           </div>
         </div>
@@ -160,7 +134,7 @@ export const Issues = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by ticket #, title, or keywords..."
+              placeholder="Search by ticket ID, title, or keywords..."
               className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
           </form>
@@ -198,7 +172,7 @@ export const Issues = () => {
         </div>
       </div>
 
-      {/* Issues Table */}
+      {/* Tickets Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-16 flex justify-center">
@@ -209,80 +183,85 @@ export const Issues = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[11px]">
                 <tr>
-                  <th className="py-3 px-4">Ticket #</th>
-                  <th className="py-3 px-4">Issue Title</th>
-                  <th className="py-3 px-4">Order ID</th>
+                  <th className="py-3 px-4">Ticket ID</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Issue</th>
                   <th className="py-3 px-4">Priority</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4">Created Date</th>
+                  <th className="py-3 px-4 text-right">View Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
-                {issues.map((issue) => (
-                  <tr key={issue.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-600">
-                      {issue.issue_number}
-                    </td>
-                    <td className="py-3.5 px-4 max-w-sm">
-                      <div className="font-semibold text-slate-900">{issue.title}</div>
-                      <div className="text-[11px] text-slate-500 truncate mt-0.5">{issue.description}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-700 font-medium">
-                      {issue.order?.order_number || 'N/A'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge status={issue.priority} size="xs" />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge status={issue.status} size="xs" />
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-700">
-                      {issue.customer?.name || (issue.order?.order_number ? `Order ${issue.order.order_number}` : 'Guest Customer')}
-                    </td>
-                    <td className="py-3.5 px-4 text-right space-x-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={Eye}
-                        onClick={() => handleOpenDetail(issue)}
-                      >
-                        Details
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon={Sparkles}
-                        onClick={() => navigate('/command-center')}
-                      >
-                        Resolve with AI
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {issues.map((issue) => {
+                  const customerName = issue.customer?.name || (issue.order?.order_number ? `Order ${issue.order.order_number}` : 'Guest Customer');
+                  const customerEmail = issue.customer?.email || '';
+                  const createdDate = issue.created_at ? new Date(issue.created_at).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  }) : 'N/A';
+
+                  return (
+                    <tr key={issue.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-indigo-600">
+                        {issue.issue_number}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-900">{customerName}</div>
+                        {customerEmail && (
+                          <div className="text-[11px] text-slate-500 truncate">{customerEmail}</div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <div className="font-semibold text-slate-900 truncate">{issue.title}</div>
+                        <div className="text-[11px] text-slate-500 truncate mt-0.5">{issue.description}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <Badge status={issue.priority} size="xs" />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <Badge status={issue.status} size="xs" />
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
+                        {createdDate}
+                      </td>
+                      <td className="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={Eye}
+                          onClick={() => handleOpenDetail(issue)}
+                        >
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : (
           <div className="p-8">
             <EmptyState
-              icon={AlertCircle}
-              title="No issues found"
-              description="No support issues matched your filter criteria."
-              actionLabel="+ Create Support Ticket"
-              onAction={() => setIsCreateModalOpen(true)}
+              icon={Ticket}
+              title="No tickets found"
+              description="No customer support tickets matched your filter criteria."
+              actionLabel="Create Ticket"
+              onAction={() => navigate('/create-ticket')}
             />
           </div>
         )}
       </div>
 
-      {/* Issue Detail Modal */}
+      {/* Ticket Detail Modal */}
       {selectedIssue && (
         <Modal
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
           title={`Ticket ${selectedIssue.issue_number}`}
-          subtitle={`Logged on ${new Date(selectedIssue.created_at).toLocaleString()}`}
+          subtitle={`Created on ${new Date(selectedIssue.created_at).toLocaleString()}`}
         >
           <div className="space-y-5">
             <div>
@@ -303,6 +282,14 @@ export const Issues = () => {
               </div>
             </div>
 
+            {selectedIssue.customer && (
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <span className="text-slate-500 font-medium block mb-1">Customer Information</span>
+                <div className="font-semibold text-slate-900">{selectedIssue.customer.name}</div>
+                <div className="text-slate-600">{selectedIssue.customer.email}</div>
+              </div>
+            )}
+
             {selectedIssue.resolution && (
               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
                 <strong className="text-emerald-900 block mb-1 font-semibold">Resolution Summary:</strong>
@@ -310,8 +297,8 @@ export const Issues = () => {
               </div>
             )}
 
-            {/* Change Status Action */}
-            <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+            {/* Change Status Action & Public Track Link */}
+            <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-600 font-medium">Update Status:</span>
                 <select
@@ -330,97 +317,23 @@ export const Issues = () => {
                 </select>
               </div>
 
-              <Button
-                variant="primary"
-                size="sm"
-                icon={Sparkles}
-                onClick={() => {
-                  setIsDetailModalOpen(false);
-                  navigate('/command-center');
-                }}
-              >
-                Investigate with AI
-              </Button>
+              {selectedIssue.customer?.email && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={ExternalLink}
+                  onClick={() => {
+                    setIsDetailModalOpen(false);
+                    navigate(`/track-ticket?ticketId=${selectedIssue.issue_number}&email=${encodeURIComponent(selectedIssue.customer.email)}`);
+                  }}
+                >
+                  Track Public View
+                </Button>
+              )}
             </div>
           </div>
         </Modal>
       )}
-
-      {/* Create Issue Modal */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Create New Support Ticket"
-        subtitle="Manually file a customer complaint or operational incident"
-      >
-        <form onSubmit={handleCreateIssue} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-medium text-slate-700 mb-1">Issue Title</label>
-            <input
-              type="text"
-              required
-              value={newIssue.title}
-              onChange={(e) => setNewIssue({ ...newIssue, title: e.target.value })}
-              placeholder="e.g., Late Delivery Report for ORD-1003"
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block font-medium text-slate-700 mb-1">Description</label>
-            <textarea
-              required
-              rows={3}
-              value={newIssue.description}
-              onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
-              placeholder="Detail the customer's problem or request..."
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-medium text-slate-700 mb-1">Category Type</label>
-              <select
-                value={newIssue.type}
-                onChange={(e) => setNewIssue({ ...newIssue, type: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-800"
-              >
-                <option value="delayed_delivery">Delayed Delivery</option>
-                <option value="missing_item">Missing Item</option>
-                <option value="wrong_item">Wrong Item</option>
-                <option value="damaged_item">Damaged Item</option>
-                <option value="refund_request">Refund Request</option>
-                <option value="general_inquiry">General Inquiry</option>
-                <option value="payment_issue">Payment Issue</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-medium text-slate-700 mb-1">Priority</label>
-              <select
-                value={newIssue.priority}
-                onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-800"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit" loading={submitting}>
-              Save Support Ticket
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

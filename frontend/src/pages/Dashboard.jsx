@@ -111,9 +111,9 @@ export const Dashboard = () => {
               variant="primary"
               size="lg"
               icon={PlusCircle}
-              onClick={() => navigate('/command-center')}
+              onClick={() => navigate('/create-ticket')}
             >
-              Try ResolveFlow AI
+              Create Ticket
             </Button>
             <Button
               variant="secondary"
@@ -169,8 +169,8 @@ export const Dashboard = () => {
           </div>
           <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
             <span>{stats?.resolvedIssues ?? 0} resolved so far</span>
-            <Link to="/issues" className="text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center">
-              View issues &rarr;
+            <Link to="/tickets" className="text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center">
+              View tickets &rarr;
             </Link>
           </div>
         </div>
@@ -302,9 +302,9 @@ export const Dashboard = () => {
                 variant="secondary"
                 size="sm"
                 className="w-full"
-                onClick={() => navigate('/command-center?scenario=ecommerce')}
+                onClick={() => navigate('/create-ticket?scenario=ecommerce')}
               >
-                Try E-commerce Scenario &rarr;
+                Create E-commerce Ticket &rarr;
               </Button>
             </div>
           </div>
@@ -371,9 +371,9 @@ export const Dashboard = () => {
                 variant="secondary"
                 size="sm"
                 className="w-full"
-                onClick={() => navigate('/command-center?scenario=support')}
+                onClick={() => navigate('/create-ticket?scenario=support')}
               >
-                Try Customer Support Scenario &rarr;
+                Create Support Ticket &rarr;
               </Button>
             </div>
           </div>
@@ -440,9 +440,9 @@ export const Dashboard = () => {
                 variant="secondary"
                 size="sm"
                 className="w-full"
-                onClick={() => navigate('/command-center?scenario=warehouse')}
+                onClick={() => navigate('/create-ticket?scenario=warehouse')}
               >
-                Try Inventory Scenario &rarr;
+                Create Inventory Ticket &rarr;
               </Button>
             </div>
           </div>
@@ -509,9 +509,9 @@ export const Dashboard = () => {
                 variant="secondary"
                 size="sm"
                 className="w-full"
-                onClick={() => navigate('/command-center?scenario=operations')}
+                onClick={() => navigate('/create-ticket?scenario=operations')}
               >
-                Try Operations Scenario &rarr;
+                Create Operations Ticket &rarr;
               </Button>
             </div>
           </div>
@@ -603,9 +603,9 @@ export const Dashboard = () => {
               variant="primary"
               size="sm"
               icon={PlusCircle}
-              onClick={() => navigate('/command-center?scenario=ecommerce')}
+              onClick={() => navigate('/create-ticket?scenario=ecommerce')}
             >
-              Test This Live in ResolveFlow
+              Create Ticket for This Problem
             </Button>
           </div>
         </div>
@@ -761,8 +761,8 @@ export const Dashboard = () => {
               icon={GitBranch}
               title="No customer requests yet"
               description="Click the button below to submit a customer problem and watch our AI resolve it."
-              actionLabel="+ Create New Customer Request"
-              onAction={() => navigate('/command-center')}
+              actionLabel="Create Ticket"
+              onAction={() => navigate('/create-ticket')}
             />
           </div>
         )}

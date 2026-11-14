@@ -118,14 +118,6 @@ export const WorkflowMonitor = () => {
             >
               Refresh
             </Button>
-            <Button
-              variant="primary"
-              size="md"
-              icon={Sparkles}
-              onClick={() => navigate('/command-center')}
-            >
-              + New Customer Request
-            </Button>
           </div>
         </div>
       </div>
@@ -345,8 +337,8 @@ export const WorkflowMonitor = () => {
                 icon={GitBranch}
                 title="No activity recorded"
                 description="Submit your first customer issue to see live agent activity."
-                actionLabel="+ Create New Customer Request"
-                onAction={() => navigate('/command-center')}
+                actionLabel="Create Ticket"
+                onAction={() => navigate('/create-ticket')}
               />
             </div>
           )}

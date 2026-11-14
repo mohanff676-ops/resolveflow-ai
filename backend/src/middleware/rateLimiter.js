@@ -33,4 +33,15 @@ export const agentLimiter = rateLimit({
   },
 });
 
-export default { authLimiter, apiLimiter, agentLimiter };
+export const ticketLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many ticket operations, please try again later',
+  },
+});
+
+export default { authLimiter, apiLimiter, agentLimiter, ticketLimiter };

@@ -82,6 +82,21 @@ export class AgentOrchestrator {
           result: failSummary,
           executionPlan: null,
         });
+
+        if (issueId) {
+          const { data: curIssue } = await supabase.from('issues').select('status').eq('id', issueId).maybeSingle();
+          if (curIssue && curIssue.status !== 'closed' && curIssue.status !== 'resolved') {
+            await supabase
+              .from('issues')
+              .update({
+                status: 'escalated',
+                resolution: `Investigation halted: ${investigationResult.error}`,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', issueId);
+          }
+        }
+
         return {
           workflow_id: workflowId,
           status: 'failed',
@@ -136,6 +151,21 @@ export class AgentOrchestrator {
           result: failSummary,
           executionPlan: decision.execution_plan,
         });
+
+        if (issueId) {
+          const { data: curIssue } = await supabase.from('issues').select('status').eq('id', issueId).maybeSingle();
+          if (curIssue && curIssue.status !== 'closed' && curIssue.status !== 'resolved') {
+            await supabase
+              .from('issues')
+              .update({
+                status: 'escalated',
+                resolution: `Execution halted: Tool "${failedStep?.tool}" failed`,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', issueId);
+          }
+        }
+
         return failSummary;
       }
 
@@ -154,6 +184,7 @@ export class AgentOrchestrator {
       // PHASE 6: MONITORING & RESOLUTION SUMMARY
       // ----------------------------------------------------------------------
       const finalStatus = executionResult.requiresApproval ? 'awaiting_approval' : 'completed';
+      await monitor.startTask('monitoring', { workflowId, status: finalStatus });
 
       const finalResult = {
         workflow_id: workflowId,
@@ -196,6 +227,49 @@ export class AgentOrchestrator {
         executionPlan: decision.execution_plan,
       });
 
+      await monitor.completeTask(
+        'monitoring',
+        {
+          status: finalStatus,
+          resolution: decision.recommended_resolution,
+          requires_approval: executionResult.requiresApproval,
+          verified: verificationResult.success,
+          completed_at: new Date().toISOString(),
+        },
+        true
+      );
+
+      // Synchronize linked support ticket state based on verification and approval requirements
+      if (issueId) {
+        if (finalStatus === 'awaiting_approval') {
+          await supabase
+            .from('issues')
+            .update({
+              status: 'awaiting_approval',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', issueId);
+        } else if (finalStatus === 'completed' && verificationResult?.success) {
+          await supabase
+            .from('issues')
+            .update({
+              status: 'resolved',
+              resolution: decision.recommended_resolution || 'Issue investigated, executed, and verified by agents.',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', issueId);
+        } else if (finalStatus === 'completed' && !verificationResult?.success) {
+          await supabase
+            .from('issues')
+            .update({
+              status: 'escalated',
+              resolution: 'Actions executed but failed post-execution verification checks.',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', issueId);
+        }
+      }
+
       return finalResult;
     } catch (err) {
       logger.error(`[Orchestrator] Workflow ${workflowId} failed with error:`, err.message);
@@ -211,6 +285,24 @@ export class AgentOrchestrator {
         result: errorResult,
         executionPlan: null,
       });
+
+      await monitor.startTask('monitoring', { workflowId, status: 'failed', error: err.message });
+      await monitor.completeTask('monitoring', { error: err.message }, false, err.message);
+
+      if (issueId) {
+        const { data: curIssue } = await supabase.from('issues').select('status').eq('id', issueId).maybeSingle();
+        if (curIssue && curIssue.status !== 'closed' && curIssue.status !== 'resolved') {
+          await supabase
+            .from('issues')
+            .update({
+              status: 'escalated',
+              resolution: `Workflow encountered error: ${err.message}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', issueId);
+        }
+      }
+
       return errorResult;
     }
   }
@@ -437,6 +529,37 @@ export class AgentOrchestrator {
         })
         .eq('id', approval.workflow_id);
 
+      // Update linked support ticket if present
+      const { data: linkedWf } = await supabase
+        .from('workflows')
+        .select('issue_id')
+        .eq('id', approval.workflow_id)
+        .maybeSingle();
+
+      if (linkedWf && linkedWf.issue_id) {
+        await supabase
+          .from('issues')
+          .update({
+            status: 'closed',
+            resolution: `Administrator reviewed and declined the proposed payout: ${rejectionReason || 'Policy limit'}`,
+            updated_at: now,
+          })
+          .eq('id', linkedWf.issue_id);
+      }
+
+      // Record monitoring agent task checkpoint for rejection
+      const monitor = new MonitoringAgent(approval.workflow_id);
+      await monitor.startTask('monitoring', { action: 'admin_rejection', approval_id: approvalId });
+      await monitor.completeTask(
+        'monitoring',
+        {
+          status: 'closed',
+          reason: rejectionReason || 'Rejected by Administrator',
+          decided_at: now,
+        },
+        true
+      );
+
       return {
         approval_id: approvalId,
         status: 'rejected',
@@ -446,6 +569,48 @@ export class AgentOrchestrator {
 
     // Admin APPROVED: Execute the approved simulated operation
     let executionResult = null;
+    let isActionVerified = false;
+
+    // Resolve or establish task_id for agent_actions foreign key constraint
+    let taskId = null;
+    const { data: existingTask } = await supabase
+      .from('agent_tasks')
+      .select('id')
+      .eq('workflow_id', approval.workflow_id)
+      .eq('agent_role', 'execution')
+      .maybeSingle();
+
+    if (existingTask) {
+      taskId = existingTask.id;
+    } else {
+      const { data: anyTask } = await supabase
+        .from('agent_tasks')
+        .select('id')
+        .eq('workflow_id', approval.workflow_id)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (anyTask) {
+        taskId = anyTask.id;
+      } else {
+        const { data: newTask } = await supabase
+          .from('agent_tasks')
+          .insert([
+            {
+              workflow_id: approval.workflow_id,
+              agent_role: 'execution',
+              status: 'completed',
+              started_at: now,
+              completed_at: now,
+            },
+          ])
+          .select('id')
+          .single();
+        taskId = newTask?.id;
+      }
+    }
+
     if (approval.action_type === 'refund') {
       const simTransferId = `SIM_TX_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`;
       executionResult = {
@@ -457,15 +622,92 @@ export class AgentOrchestrator {
         processed_at: now,
       };
 
-      // Update issue if associated
-      await supabase
-        .from('issues')
-        .update({
+      // Verify execution output
+      isActionVerified = !!(executionResult && executionResult.transfer_id && executionResult.amount !== undefined);
+
+      // Record verified action in agent_actions
+      await supabase.from('agent_actions').insert([
+        {
+          workflow_id: approval.workflow_id,
+          task_id: taskId,
+          tool_name: 'execute_approved_refund',
+          arguments: {
+            approval_id: approvalId,
+            order_id: approval.details?.order_id,
+            amount: approval.details?.amount,
+            transfer_id: simTransferId,
+          },
+          result: executionResult,
+          status: isActionVerified ? 'success' : 'failed',
+          executed_at: now,
+        },
+      ]);
+
+      // Only update ticket to resolved if the action was actually executed and verified
+      if (isActionVerified) {
+        const { data: linkedWf } = await supabase
+          .from('workflows')
+          .select('issue_id')
+          .eq('id', approval.workflow_id)
+          .maybeSingle();
+
+        const issueUpdate = {
           status: 'resolved',
-          resolution: `Approved refund of $${approval.details?.amount} executed (${simTransferId}).`,
+          resolution: `Approved refund of $${approval.details?.amount} executed and verified (${simTransferId}).`,
           updated_at: now,
-        })
-        .eq('order_id', approval.details?.order_id);
+        };
+
+        if (linkedWf && linkedWf.issue_id) {
+          await supabase.from('issues').update(issueUpdate).eq('id', linkedWf.issue_id);
+        } else if (approval.details?.order_id) {
+          await supabase
+            .from('issues')
+            .update(issueUpdate)
+            .eq('order_id', approval.details?.order_id);
+        }
+      }
+    } else {
+      // Non-refund approved operation execution & verification
+      executionResult = {
+        executed: true,
+        action_type: approval.action_type,
+        details: approval.details,
+        processed_at: now,
+      };
+      isActionVerified = true;
+
+      await supabase.from('agent_actions').insert([
+        {
+          workflow_id: approval.workflow_id,
+          task_id: taskId,
+          tool_name: `execute_approved_${approval.action_type}`,
+          arguments: approval.details || {},
+          result: executionResult,
+          status: 'success',
+          executed_at: now,
+        },
+      ]);
+
+      const { data: linkedWf } = await supabase
+        .from('workflows')
+        .select('issue_id')
+        .eq('id', approval.workflow_id)
+        .maybeSingle();
+
+      if (linkedWf && linkedWf.issue_id) {
+        await supabase
+          .from('issues')
+          .update({
+            status: 'resolved',
+            resolution: `Approved action "${approval.action_type}" executed and verified by administrator.`,
+            updated_at: now,
+          })
+          .eq('id', linkedWf.issue_id);
+      }
+    }
+
+    if (!isActionVerified) {
+      throw new Error('Failed to verify execution of approved action. Ticket was not marked resolved.');
     }
 
     // 3. Update approval record to 'executed'
@@ -487,6 +729,20 @@ export class AgentOrchestrator {
         completed_at: now,
       })
       .eq('id', approval.workflow_id);
+
+    // Record monitoring agent task checkpoint for executed approval
+    const monitor = new MonitoringAgent(approval.workflow_id);
+    await monitor.startTask('monitoring', { action: 'admin_approval', approval_id: approvalId });
+    await monitor.completeTask(
+      'monitoring',
+      {
+        approval_id: approvalId,
+        status: 'executed',
+        transfer_id: executionResult?.transfer_id,
+        resolved_at: now,
+      },
+      true
+    );
 
     // 5. Record audit log
     await supabase.from('audit_logs').insert([

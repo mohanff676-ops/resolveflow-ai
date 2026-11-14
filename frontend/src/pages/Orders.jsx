@@ -96,14 +96,6 @@ export const Orders = () => {
             >
               Refresh
             </Button>
-            <Button
-              variant="primary"
-              size="md"
-              icon={Sparkles}
-              onClick={() => navigate('/command-center')}
-            >
-              + New Customer Request
-            </Button>
           </div>
         </div>
       </div>
@@ -323,10 +315,10 @@ export const Orders = () => {
                 icon={Sparkles}
                 onClick={() => {
                   setIsDetailModalOpen(false);
-                  navigate('/command-center');
+                  navigate(`/create-ticket?orderId=${selectedOrder.order_number}`);
                 }}
               >
-                Investigate with AI
+                Create Ticket for Order
               </Button>
             </div>
           </div>

@@ -5,9 +5,11 @@ import Header from './Header.jsx';
 
 const TITLE_MAP = {
   '/': 'Home',
-  '/command-center': 'New Customer Request',
+  '/create-ticket': 'Create Ticket',
+  '/track-ticket': 'Track Ticket',
+  '/tickets': 'All Tickets',
   '/orders': 'Orders',
-  '/issues': 'Support Issues',
+  '/issues': 'All Tickets',
   '/workflows': 'Activity History',
   '/approvals': 'Approvals',
   '/analytics': 'Reports',

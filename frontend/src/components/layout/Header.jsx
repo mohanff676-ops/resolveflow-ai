@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, PlusCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Menu } from 'lucide-react';
 import api from '../../services/api.js';
-import Button from '../common/Button.jsx';
 import Badge from '../common/Badge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export const Header = ({ onOpenSidebar, pageTitle = 'Home' }) => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [isBackendHealthy, setIsBackendHealthy] = useState(true);
 
@@ -65,17 +62,6 @@ export const Header = ({ onOpenSidebar, pageTitle = 'Home' }) => {
 
         {/* Role Pill */}
         <Badge status={user?.role || 'operator'} size="sm" />
-
-        {/* Quick New Request Button */}
-        <Button
-          variant="primary"
-          size="sm"
-          icon={PlusCircle}
-          onClick={() => navigate('/command-center')}
-          className="hidden md:inline-flex"
-        >
-          New Request
-        </Button>
       </div>
     </header>
   );

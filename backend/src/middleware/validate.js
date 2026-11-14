@@ -7,9 +7,10 @@ export const validate = (schema) => {
       req.body = parsed;
       next();
     } catch (err) {
-      if (err.errors && Array.isArray(err.errors)) {
-        const message = err.errors
-          .map((e) => (e.path.length > 0 ? `${e.path.join('.')}: ${e.message}` : e.message))
+      const issues = err.issues || err.errors;
+      if (issues && Array.isArray(issues)) {
+        const message = issues
+          .map((e) => (e.path && e.path.length > 0 ? `${e.path.join('.')}: ${e.message}` : e.message))
           .join(', ');
         return error(res, `Validation failed: ${message}`, 400);
       }

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home,
   PlusCircle,
+  Search,
   Package,
   AlertCircle,
   History,
@@ -48,9 +49,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'New Customer Request', path: '/command-center', icon: PlusCircle, highlight: true },
+    { name: 'Create Ticket', path: '/create-ticket', icon: PlusCircle, highlight: true },
+    { name: 'Track Ticket', path: '/track-ticket', icon: Search },
+    { name: 'All Tickets', path: '/tickets', icon: AlertCircle },
     { name: 'Orders', path: '/orders', icon: Package },
-    { name: 'Support Issues', path: '/issues', icon: AlertCircle },
     { name: 'Activity History', path: '/workflows', icon: History },
     {
       name: 'Approvals',

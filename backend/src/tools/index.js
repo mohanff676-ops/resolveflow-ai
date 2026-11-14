@@ -792,7 +792,8 @@ export async function executeTool(toolName, rawArgs) {
     try {
       validatedArgs = schema.parse(rawArgs || {});
     } catch (valErr) {
-      const msg = valErr.errors ? valErr.errors.map((e) => e.message).join(', ') : valErr.message;
+      const issues = valErr.issues || valErr.errors;
+      const msg = issues && Array.isArray(issues) ? issues.map((e) => e.message).join(', ') : valErr.message;
       logger.error(`Validation error for tool "${toolName}": ${msg}`);
       return {
         success: false,
